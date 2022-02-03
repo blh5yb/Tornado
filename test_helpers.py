@@ -1,5 +1,5 @@
 import pytest
-from app import reverse_complement, parse_genome_data
+from app import reverse_complement, parse_genome_data, temp_fetch_genome
 
 @pytest.mark.parametrize(
     "sequence, exp_revcomped",
@@ -31,3 +31,18 @@ def test_parse_genome_data():
     obs_contigs_and_seqs = parse_genome_data(genome_data)
     assert contigs_and_seqs == obs_contigs_and_seqs
 
+
+def test_fetch_genome():
+    parsed_genome = {
+        'chromosome1': 'ACGTACGTACGATCGACAGTCGATCGATCGATCGATCAGCTAGCTA',
+        'chromosome2': 'GATCGATCGATCAGTCAGTGCTAGCATCGATCGATCGATCGATCGA'
+    }
+    region = 'chromosome1'
+    start = 1
+    end = 5
+    response = {
+        'sequence': parsed_genome[region][start - 1: end]
+    }
+
+    test_response = temp_fetch_genome(parsed_genome, region, start, end)
+    assert response == test_response

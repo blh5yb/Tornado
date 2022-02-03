@@ -50,6 +50,24 @@ def upload_genome(file_body, file_name):
     return file_id
 
 
+def temp_fetch_genome(genome, region, start, end):
+    """
+    Fetch genome for db by id
+    Parameters
+    ----------
+    id
+        genome id
+
+    Returns
+    -------
+    Dictionary of genome locations and sequences
+    """
+    response = {
+        'sequence': genome[region][(start - 1):end]
+    }
+    return response
+
+
 def fetch_genome(id):
     """
     Fetch genome for db by id
@@ -104,9 +122,10 @@ def get_matches(sub_seq, region):
     Dictionary of forward and reverse complement matches
     """
     try:
-        forward_start_sites = [s.start() for s in re.finditer(sub_seq.upper(), region.upper())]
+        # account for overlapping substrings with re.escape()
+        forward_start_sites = [s.start() for s in re.finditer(f'(?={re.escape(sub_seq.upper())})', region.upper())]
         reverse_seq = Seq(sub_seq).reverse_complement()
-        reverse_start_sites = [s.start() for s in re.finditer(str(reverse_seq).upper(), region.upper())]
+        reverse_start_sites = [s.start() for s in re.finditer(f'(?={re.escape(str(reverse_seq).upper())})', region.upper())]
     except TypeError:
         logger.error(TypeError)
 
@@ -152,6 +171,10 @@ class VersionHandler(RequestHandler):
 
 
 class GenomeSeqHandler(RequestHandler):
+    """
+    query for the names and lengths of chromosomes for a given registered genome
+    ex: curl "http://localhost:8080/genome_search/1?seq=atgc"
+    """
     def get(self, id) -> None:
         try:
             sub_seq = self.get_argument("seq")
@@ -169,16 +192,15 @@ class GenomeSeqHandler(RequestHandler):
 
 class QueryGenomeHandler(RequestHandler):
     """
-    query for the names and lengths of chromosomes for a given registered genome
-    or
     retrieve the sequence of a genomic region of the registered genome
     using the unique identifier (both queries require id)
+    ex: curl "http://localhost:8080/retrieve_seq/1?region=chromosome1&start=1&end=5"
     """
     def get(self, id) -> None:
         try:
             seq_name = self.get_argument('region')
-            start = int(self.get_argument('start'))
-            end = int(self.get_argument('end')) + 1
+            start = int(self.get_argument('start')) - 1
+            end = int(self.get_argument('end'))
 
             genome = fetch_genome(id)
             response = {
@@ -196,13 +218,13 @@ class QueryGenomeHandler(RequestHandler):
 class QueryRegionHandler(RequestHandler):
     """
     return matches for given query sequence and genomic region for all genomes
+    ex: curl "http://localhost:8080/genome_regions?seq=atgc&region=chromosome1"
     """
     def get(self) -> None:
         try:
             sub_seq = self.get_argument("seq")
             region = self.get_argument("region")
             genomes = fetch_all_genomes()
-            print(genomes)
             response = {}
             for id in genomes:
                 full_seq = genomes[str(id)][region]
@@ -221,7 +243,10 @@ class GenomeHandler(RequestHandler):
     return any substring matches of a query sequence and genome
     """
     def get(self) -> None:
-        """Query Genome given an id param"""
+        """
+        Query Genome given an id param
+        ex: curl http://localhost:8080/genomes?id=1
+        """
         try:
             id = self.get_argument("id")
             print(id)
@@ -239,9 +264,13 @@ class GenomeHandler(RequestHandler):
             #self.render("index.html")
 
     def post(self) -> None:
-        """Upload genome file and save to 'coding_challenge' database table"""
+        """
+        Upload genome file and save to 'coding_challenge' database table
+        ex: curl -i -X POST -H "Content_Type: multipart/form-data" -F "genomeFile=@genomes/test_file.fasta" http://localhost:8080/genomes
+        """
         try:
             genome_file = self.request.files["genomeFile"][0]
+            # print('genome file', genome_file)
             genome_id = upload_genome(genome_file.body.decode(), genome_file.filename)
             response = {'id': genome_id}
             self.set_status(200)

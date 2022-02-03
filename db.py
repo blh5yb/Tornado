@@ -29,7 +29,7 @@ class ConnectingSQL:
             self.cur = self.conn.cursor()
 
         except Exception as e:
-            logger.error(f"Error connecting to postgres db: {e}")
+            logger.error(f"Error connecting to sql db: {e}")
 
     def execute(self, query, db):
         """
@@ -46,10 +46,10 @@ class ConnectingSQL:
         try:
             self.cur.execute(f"USE {db}")
             self.cur.execute(query)
-            logger.info("Successfully executed postgres query")
+            logger.info("Successfully executed sql query")
 
         except Exception as e:
-            logger.error(f"Error executing postgres query: {e}")
+            logger.error(f"Error executing sql query: {e}")
 
     def commit(self):
         """Commit write/ update queries"""
@@ -73,7 +73,7 @@ class ConnectingSQL:
             logger.info("Successfully fetched record from db")
             return record
 
-        except (Exception, psycopg2.Error) as e:
+        except Exception as e:
             logger.error(f"Error fetching record from db: {e}")
 
     def close(self):
